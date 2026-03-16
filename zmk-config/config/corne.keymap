@@ -1,0 +1,174 @@
+/*
+ * Corne ZMK keymap — ported from QMK keymaps/mine
+ *
+ * Key layout reference (42 keys, 0-indexed):
+ *  Left:   0  1  2  3  4  5 │ Right: 21 22 23 24 25 26
+ *          6  7  8  9 10 11 │        27 28 29 30 31 32
+ *         12 13 14 15 16 17 │        33 34 35 36 37 38
+ *              18 19 20     │              39 40 41
+ *
+ * Combo key positions:
+ *  JK (28,29) → ESC
+ *  FD (9,10)  → - (BASE layer)
+ *  34 (9,10)  → - (LOWER layer — same physical keys as FD)
+ */
+
+#include <behaviors.dtsi>
+#include <dt-bindings/zmk/keys.h>
+#include <dt-bindings/zmk/bt.h>
+#include <dt-bindings/zmk/outputs.h>
+
+#define BASE  0
+#define LOWER 1
+#define RAISE 2
+#define FUNC  3
+
+/ {
+    behaviors {
+        /*
+         * Hold-tap used for CTL_ESC (Ctrl held, Esc tapped).
+         * 200ms tapping term, hold-preferred mirrors QMK's
+         * HOLD_ON_OTHER_KEY_PRESS + PERMISSIVE_HOLD combo.
+         */
+        mt_hp: mod_tap_hold_preferred {
+            compatible = "zmk,behavior-hold-tap";
+            label = "MOD_TAP_HOLD_PREFERRED";
+            #binding-cells = <2>;
+            tapping-term-ms = <200>;
+            quick-tap-ms = <150>;
+            flavor = "hold-preferred";
+            bindings = <&kp>, <&kp>;
+        };
+
+        /*
+         * Sticky key (one-shot) with 2000ms timeout.
+         * Mirrors QMK ONESHOT_TIMEOUT 2000.
+         * Note: QMK's ONESHOT_TAP_TOGGLE 3 (lock after 3 taps) has
+         * no direct ZMK equivalent.
+         */
+        skq: sticky_key_quick_release {
+            compatible = "zmk,behavior-sticky-key";
+            label = "STICKY_KEY_QUICK_RELEASE";
+            #binding-cells = <1>;
+            bindings = <&kp>;
+            release-after-ms = <2000>;
+            quick-release;
+        };
+    };
+
+    /*
+     * FUNC layer activates when both LOWER and RAISE are held simultaneously
+     * (tri-layer / adjust layer pattern).
+     */
+    conditional_layers {
+        compatible = "zmk,conditional-layers";
+        func_layer {
+            if-layers = <LOWER RAISE>;
+            then-layer = <FUNC>;
+        };
+    };
+
+    combos {
+        compatible = "zmk,combos";
+
+        /* J+K → Escape (vim) */
+        combo_jk_esc {
+            timeout-ms = <40>;
+            key-positions = <28 29>;
+            bindings = <&kp ESC>;
+        };
+
+        /* F+D → Dash on home row (BASE layer only) */
+        combo_fd_dash {
+            timeout-ms = <40>;
+            key-positions = <9 10>;
+            bindings = <&kp MINUS>;
+            layers = <BASE>;
+        };
+
+        /* 3+4 → Dash on num layer (same physical keys as FD) */
+        combo_num_dash {
+            timeout-ms = <40>;
+            key-positions = <9 10>;
+            bindings = <&kp MINUS>;
+            layers = <LOWER>;
+        };
+    };
+
+    keymap {
+        compatible = "zmk,keymap";
+
+        /* ── BASE ─────────────────────────────────────────────────────────── */
+        base_layer {
+            label = "Base";
+            // ,------------------------------------------.                    ,------------------------------------------.
+            // | Tab  |  Q   |  W   |  E   |  R   |  T   |                    |  Y   |  U   |  I   |  O   |  P   | Bspc |
+            // |------+------+------+------+------+------|                    |------+------+------+------+------+------|
+            // |*Ctrl |  A   |  S   |  D   |  F   |  G   |                    |  H   |  J   |  K   |  L   |  ;   |  '   |
+            // |------+------+------+------+------+------|                    |------+------+------+------+------+------|
+            // |*Shft |  Z   |  X   |  C   |  V   |  B   |                    |  N   |  M   |  ,   |  .   |  /   | Esc  |
+            //                      | GUI  | Lower| Enter|                    | Space| Raise| *Alt |
+            // (* = one-shot / sticky)
+            bindings = <
+    &kp TAB    &kp Q  &kp W  &kp E  &kp R  &kp T      &kp Y  &kp U  &kp I      &kp O    &kp P     &kp BSPC
+    &skq LCTRL &kp A  &kp S  &kp D  &kp F  &kp G      &kp H  &kp J  &kp K      &kp L    &kp SEMI  &kp SQT
+    &skq LSHFT &kp Z  &kp X  &kp C  &kp V  &kp B      &kp N  &kp M  &kp COMMA  &kp DOT  &kp FSLH  &kp ESC
+                    &kp LGUI  &mo LOWER  &kp RET      &kp SPC  &mo RAISE  &skq LALT
+            >;
+        };
+
+        /* ── LOWER ────────────────────────────────────────────────────────── */
+        lower_layer {
+            label = "Lower";
+            // ,------------------------------------------.                    ,------------------------------------------.
+            // |      |  !   |  @   |  #   |  $   |  %   |                    |  ^   |  &   |  *   |  (   |  )   |      |
+            // |------+------+------+------+------+------|                    |------+------+------+------+------+------|
+            // |      |  1   |  2   |  3   |  4   |  5   |                    |  6   |  7   |  8   |  9   |  0   |      |
+            // |------+------+------+------+------+------|                    |------+------+------+------+------+------|
+            // |      |      |  ~   |  `   |  [   |  {   |                    |  }   |  ]   |  ,   |  .   |  /   |      |
+            //                      |      |      |      |                    |  -   |      |  :   |
+            bindings = <
+    &trans  &kp EXCL  &kp AT     &kp HASH   &kp DLLR  &kp PRCNT    &kp CARET  &kp AMPS  &kp STAR   &kp LPAR  &kp RPAR  &trans
+    &trans  &kp N1    &kp N2     &kp N3     &kp N4    &kp N5       &kp N6     &kp N7    &kp N8     &kp N9    &kp N0    &trans
+    &trans  &none     &kp TILDE  &kp GRAVE  &kp LBKT  &kp LBRC     &kp RBRC   &kp RBKT  &kp COMMA  &kp DOT   &kp FSLH  &trans
+                                 &trans     &trans    &trans       &kp MINUS  &trans    &kp COLON
+            >;
+        };
+
+        /* ── RAISE ────────────────────────────────────────────────────────── */
+        raise_layer {
+            label = "Raise";
+            // ,------------------------------------------.                    ,------------------------------------------.
+            // |      | Del  |      |  _   |  +   | PgUp |                    |      |  <   |  >   |  \   |  |   |      |
+            // |------+------+------+------+------+------|                    |------+------+------+------+------+------|
+            // |      | Home | End  |  -   |  =   | PgDn |                    | Left | Down |  Up  | Right| App  |      |
+            // |------+------+------+------+------+------|                    |------+------+------+------+------+------|
+            // |      |  <   |  >   | Copy | Paste|  ;   |                    | Play | Prev | Next | VolDn| VolUp|      |
+            //                      |CtlEsc|      |      |                    |      |      |      |
+            bindings = <
+    &trans  &kp DEL   &none    &kp UNDER  &kp PLUS   &kp PG_UP    &none      &kp LT      &kp GT      &kp BSLH      &kp PIPE      &trans
+    &trans  &kp HOME  &kp END  &kp MINUS  &kp EQUAL  &kp PG_DN    &kp LEFT   &kp DOWN    &kp UP      &kp RIGHT     &kp K_APP     &trans
+    &trans  &kp LT    &kp GT   &kp LC(C)  &kp LC(V)  &kp SEMI     &kp C_PP   &kp C_PREV  &kp C_NEXT  &kp C_VOL_DN  &kp C_VOL_UP  &trans
+                    &mt_hp LCTRL ESC  &trans  &none        &trans     &trans      &trans
+            >;
+        };
+
+        /* ── FUNC (tri-layer: LOWER + RAISE) ──────────────────────────────── */
+        func_layer {
+            label = "Func";
+            // ,------------------------------------------.                    ,------------------------------------------.
+            // |      |  F1  |  F2  |  F3  |  F4  |  F5  |                    |  F6  |  F7  |  F8  |  F9  | F10  |      |
+            // |------+------+------+------+------+------|                    |------+------+------+------+------+------|
+            // |      | F11  | F12  |      |      |      |                    |      |      |      |      |      |      |
+            // |------+------+------+------+------+------|                    |------+------+------+------+------+------|
+            // |      | Caps |      |      |      |      |                    |      |      |      |      | Boot |      |
+            //                      |      |      |      |                    |      |      |      |
+            bindings = <
+    &trans  &kp F1    &kp F2   &kp F3  &kp F4  &kp F5    &kp F6  &kp F7  &kp F8  &kp F9  &kp F10      &trans
+    &trans  &kp F11   &kp F12  &none   &none   &none      &none   &none   &none   &none   &none        &trans
+    &trans  &kp CAPS  &none    &none   &none   &none      &none   &none   &none   &none   &bootloader  &none
+                               &none   &none   &none      &none   &none   &none
+            >;
+        };
+    };
+};
